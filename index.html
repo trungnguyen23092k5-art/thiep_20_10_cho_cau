@@ -23,6 +23,7 @@
 .envelope.opening{opacity:1}
 #letterScreen.active .letter{animation:unfold-letter .85s cubic-bezier(.2,.7,.2,1) both}
 @keyframes unfold-letter{from{opacity:0;transform:translateY(50px) scale(.92) rotate(-3deg)}to{opacity:1;transform:translateY(0) scale(1) rotate(-1deg)}}
+.letter{overflow-anchor:none;overscroll-behavior:contain;scroll-behavior:auto;scrollbar-width:thin}
 #letterBody.typing:after{content:'▏';color:#c46893;animation:cursor-blink .8s step-end infinite}
 @keyframes cursor-blink{50%{opacity:0}}
 .letter-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px;max-width:95vw}
@@ -99,13 +100,14 @@ const PHOTO_STORE='thiep-20-10-local-photos-v1';
 try{if(!config.photos.length){const local=JSON.parse(localStorage.getItem(PHOTO_STORE)||'[]');if(Array.isArray(local))config.photos=local.filter(p=>typeof p==='string'&&p.startsWith('data:image/')).slice(0,12)}}catch{}
 let envelopeTimer=0,letterFrame=0;
 function stopLetterReveal(){if(letterFrame)cancelAnimationFrame(letterFrame);letterFrame=0;$('letterBody').classList.remove('typing');$('revealLetter').hidden=true;}
-function finishLetterReveal(){stopLetterReveal();$('letterBody').textContent=config.letter;$('sender').hidden=false;}
+function followLetterText(){const box=document.querySelector('#letterScreen .letter');if(!box)return;const target=Math.max(0,box.scrollHeight-box.clientHeight);box.scrollTop+=Math.max(0,target-box.scrollTop)*.28;}
+function finishLetterReveal(follow=true){stopLetterReveal();$('letterBody').textContent=config.letter;$('sender').hidden=false;if(follow&&current==='letterScreen'){const box=document.querySelector('#letterScreen .letter');box?.scrollTo({top:box.scrollHeight,behavior:reduced?'instant':'smooth'})}}
 function revealLetter(){
  stopLetterReveal();$('letterTitle').textContent=config.title;$('letterBody').setAttribute('aria-label',config.letter);$('sender').hidden=true;
- if(reduced){finishLetterReveal();return}
- const chars=Array.from(config.letter),duration=Math.min(12000,Math.max(3000,chars.length*17)),start=performance.now();
- $('letterBody').textContent='';$('letterBody').classList.add('typing');$('revealLetter').hidden=false;
- function tick(now){if(current!=='letterScreen'){stopLetterReveal();return}const count=Math.min(chars.length,Math.floor(Math.max(0,now-start-250)/duration*chars.length));$('letterBody').textContent=chars.slice(0,count).join('');if(count===chars.length){finishLetterReveal();return}letterFrame=requestAnimationFrame(tick)}
+ if(reduced){finishLetterReveal(false);const box=document.querySelector('#letterScreen .letter');if(box)box.scrollTop=0;return}
+ const chars=Array.from(config.letter),duration=Math.min(28000,Math.max(6500,chars.length*32)),start=performance.now();
+ $('letterBody').textContent='';const box=document.querySelector('#letterScreen .letter');if(box)box.scrollTop=0;$('letterBody').classList.add('typing');$('revealLetter').hidden=false;
+ function tick(now){if(current!=='letterScreen'){stopLetterReveal();return}const count=Math.min(chars.length,Math.floor(Math.max(0,now-start-250)/duration*chars.length));$('letterBody').textContent=chars.slice(0,count).join('');followLetterText();if(count===chars.length){finishLetterReveal();return}letterFrame=requestAnimationFrame(tick)}
  letterFrame=requestAnimationFrame(tick);
 }
 $('revealLetter').onclick=finishLetterReveal;
